@@ -7,9 +7,10 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-logr/logr"
 	"github.com/heptiolabs/healthcheck"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opencensus.io/plugin/ochttp"
 	"go.opencensus.io/plugin/ochttp/propagation/b3"
+	"go.opencensus.io/stats/view"
+	"go.opencensus.io/trace"
 	"net/http"
 )
 
@@ -51,6 +52,22 @@ func IsPublic() Option {
 	}
 }
 
+// WithTraceExporter enable opencensus trace exporting
+//noinspection GoUnusedExportedFunction
+func WithTraceExporter(exp trace.Exporter) Option {
+	return func(server *defaultServer) {
+		server.tracer = exp
+	}
+}
+
+// WithMetricsExporter enable opencensus metrics exporter
+//noinspection GoUnusedExportedFunction
+func WithMetricsExporter(exp view.Exporter) Option {
+	return func(server *defaultServer) {
+		server.metrics = exp
+	}
+}
+
 // New creates a new app server with default config
 func New(log logr.Logger, opts ...Option) Server {
 	adminApp := chi.NewRouter()
@@ -58,7 +75,6 @@ func New(log logr.Logger, opts ...Option) Server {
 
 	adminApp.Use(middleware.NoCache)
 	adminApp.Mount("/debug", middleware.Profiler())
-	adminApp.Mount("/metrics", promhttp.Handler())
 	adminApp.Get("/healthz", health.LiveEndpoint)
 	adminApp.Get("/readyz", health.ReadyEndpoint)
 	adminApp.Get("/version", VersionHandler(log, NewVersionInfo()))
@@ -91,21 +107,31 @@ func New(log logr.Logger, opts ...Option) Server {
 		configure(srv)
 	}
 
-	app.Use(
-		func(next http.Handler) http.Handler {
-			return &ochttp.Handler{
-				Handler:     next,
-				Propagation: &b3.HTTPFormat{},
-				IsPublicEndpoint: srv.isPublic,
-			}
-		},
-		func(next http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				route := chi.RouteContext(r.Context())
-				ochttp.WithRouteTag(next, route.RoutePath).ServeHTTP(w, r)
-			})
-		},
-	)
+	if srv.metrics != nil {
+		if pe, ok := srv.metrics.(http.Handler); ok {
+			srv.adminApp.Mount("/metrics", pe)
+		}
+		view.RegisterExporter(srv.metrics)
+	}
+
+	if srv.tracer != nil {
+		trace.RegisterExporter(srv.tracer)
+		srv.app.Use(
+			func(next http.Handler) http.Handler {
+				return &ochttp.Handler{
+					Handler:          next,
+					Propagation:      &b3.HTTPFormat{},
+					IsPublicEndpoint: srv.isPublic,
+				}
+			},
+			func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					route := chi.RouteContext(r.Context())
+					ochttp.WithRouteTag(next, route.RoutePath).ServeHTTP(w, r)
+				})
+			},
+		)
+	}
 	return srv
 }
 
@@ -139,6 +165,9 @@ type defaultServer struct {
 	app       chi.Router
 	adminApp  chi.Router
 	isPublic  bool
+
+	tracer trace.Exporter
+	metrics view.Exporter
 }
 
 // App returns the application for the web server
