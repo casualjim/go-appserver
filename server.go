@@ -89,7 +89,7 @@ func New(log logr.Logger, opts ...Option) Server {
 
 	srv := &defaultServer{
 		Application: locator.New(),
-		app:         chi.NewRouter(),
+		app:         app,
 		adminApp:    adminApp,
 		Handler:     health,
 		adminOpts: []httpd.Option{
