@@ -3,6 +3,7 @@ package appserver
 
 import (
 	"encoding/json"
+	"github.com/casualjim/go-appserver/mocks"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	"net/http/httptest"
@@ -16,7 +17,7 @@ func TestServeVersion(t *testing.T) {
 		GitState:  "clean",
 		Version:   "version-here",
 	}
-	lg := &LoggerMock{
+	lg := &mocks.LoggerMock{
 		EnabledFunc: func() bool { return true },
 		ErrorFunc: func(err error, msg string, keysAndValues ...interface{}) {
 

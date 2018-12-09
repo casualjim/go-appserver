@@ -2,12 +2,15 @@ package appserver
 
 import (
 	"github.com/casualjim/go-appserver/locator"
+	"github.com/casualjim/go-appserver/middleware"
 	"github.com/casualjim/go-httpd"
 	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
 	"github.com/go-logr/logr"
 	"github.com/heptiolabs/healthcheck"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opencensus.io/plugin/ochttp"
+	"go.opencensus.io/plugin/ochttp/propagation/b3"
+	"net/http"
 )
 
 type Option func(*defaultServer)
@@ -40,9 +43,17 @@ func WithHTTPDOption(opts ...httpd.Option) Option {
 	}
 }
 
+// IsPublic lets the server know that it's going to be the first hop
+//noinspection GoUnusedExportedFunction
+func IsPublic() Option {
+	return func(server *defaultServer) {
+		server.isPublic = true
+	}
+}
+
 // New creates a new app server with default config
 func New(log logr.Logger, opts ...Option) Server {
-	adminApp:= chi.NewRouter()
+	adminApp := chi.NewRouter()
 	health := healthcheck.NewHandler()
 
 	adminApp.Use(middleware.NoCache)
@@ -52,11 +63,19 @@ func New(log logr.Logger, opts ...Option) Server {
 	adminApp.Get("/readyz", health.ReadyEndpoint)
 	adminApp.Get("/version", VersionHandler(log, NewVersionInfo()))
 
+	app := chi.NewRouter()
+	app.Use(
+		middleware.ProxyHeaders,
+		middleware.Recover(log),
+		middleware.LogRequests(log),
+		middleware.CompressHandler,
+	)
+
 	srv := &defaultServer{
 		Application: locator.New(),
-		app: chi.NewRouter(),
-		adminApp: adminApp,
-		Handler: health,
+		app:         chi.NewRouter(),
+		adminApp:    adminApp,
+		Handler:     health,
 		adminOpts: []httpd.Option{
 			httpd.WithAdminListeners(&httpd.HTTPFlags{
 				Prefix: "metrics",
@@ -71,6 +90,22 @@ func New(log logr.Logger, opts ...Option) Server {
 	for _, configure := range opts {
 		configure(srv)
 	}
+
+	app.Use(
+		func(next http.Handler) http.Handler {
+			return &ochttp.Handler{
+				Handler:     next,
+				Propagation: &b3.HTTPFormat{},
+				IsPublicEndpoint: srv.isPublic,
+			}
+		},
+		func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				route := chi.RouteContext(r.Context())
+				ochttp.WithRouteTag(next, route.RoutePath).ServeHTTP(w, r)
+			})
+		},
+	)
 	return srv
 }
 
@@ -98,11 +133,12 @@ type defaultServer struct {
 	locator.Application
 	healthcheck.Handler
 
-	server httpd.Server
+	server    httpd.Server
 	adminOpts []httpd.Option
 	httpdOpts []httpd.Option
-	app chi.Router
-	adminApp chi.Router
+	app       chi.Router
+	adminApp  chi.Router
+	isPublic  bool
 }
 
 // App returns the application for the web server
@@ -146,4 +182,3 @@ func (d *defaultServer) Stop() error {
 	}
 	return d.Application.Stop()
 }
-

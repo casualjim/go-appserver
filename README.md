@@ -11,7 +11,6 @@ Comes with a simple service locator included.
   * Recover from panics
   * Compression
   * Read Load Balancer headers for correct remote address and scheme
-  * OpenCensus tracing
   * Request logging with zap
 
 ## Usage
