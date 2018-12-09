@@ -4,9 +4,81 @@ import (
 	"compress/flate"
 	"compress/gzip"
 	"github.com/felixge/httpsnoop"
+	"log"
 	"net/http"
 	"strings"
+	"sync"
 )
+
+// gzipWriterPools stores a sync.Pool for each compression level for reuse of
+// gzip.Writers. Use poolIndex to covert a compression level to an index into
+// gzipWriterPools.
+var gzipWriterPools [gzip.BestCompression - gzip.BestSpeed + 2]*sync.Pool
+
+func init() {
+	for i := gzip.BestSpeed; i <= gzip.BestCompression; i++ {
+		addGzipLevelPool(i)
+	}
+	addGzipLevelPool(gzip.DefaultCompression)
+}
+
+// gzipPoolIndex maps a compression level to its index into gzipWriterPools. It
+// assumes that level is a valid gzip compression level.
+func gzipPoolIndex(level int) int {
+	// gzip.DefaultCompression == -1, so we need to treat it special.
+	if level == gzip.DefaultCompression {
+		return gzip.BestCompression - gzip.BestSpeed + 1
+	}
+	return level - gzip.BestSpeed
+}
+
+func addGzipLevelPool(level int) {
+	gzipWriterPools[gzipPoolIndex(level)] = &sync.Pool{
+		New: func() interface{} {
+			// NewWriterLevel only returns error on a bad level, we are guaranteeing
+			// that this will be a valid level so it is okay to ignore the returned
+			// error.
+			w, _ := gzip.NewWriterLevel(nil, level)
+			return w
+		},
+	}
+}
+
+
+// flateWriterPools stores a sync.Pool for each compression level for reuse of
+// gzip.Writers. Use poolIndex to covert a compression level to an index into
+// flateWriterPools.
+var flateWriterPools [flate.BestCompression - flate.BestSpeed + 2]*sync.Pool
+
+func init() {
+	for i := flate.BestSpeed; i <= flate.BestCompression; i++ {
+		addFlateLevelPool(i)
+	}
+	addFlateLevelPool(flate.DefaultCompression)
+}
+
+// flatePoolIndex maps a compression level to its index into flateWriterPools. It
+// assumes that level is a valid flate compression level.
+func flatePoolIndex(level int) int {
+	// flate.DefaultCompression == -1, so we need to treat it special.
+	if level == flate.DefaultCompression {
+		return flate.BestCompression - flate.BestSpeed + 1
+	}
+	return level - flate.BestSpeed
+}
+
+func addFlateLevelPool(level int) {
+	flateWriterPools[flatePoolIndex(level)] = &sync.Pool{
+		New: func() interface{} {
+			// NewWriterLevel only returns error on a bad level, we are guaranteeing
+			// that this will be a valid level so it is okay to ignore the returned
+			// error.
+			w, _ := flate.NewWriter(nil, level)
+			return w
+		},
+	}
+}
+
 
 // Adapted from http://github.com/gorilla/handlers
 // Their middleware is greedy when it comes to implementing response writer methods
@@ -41,9 +113,15 @@ func CompressHandlerLevel(h http.Handler, level int) http.Handler {
 				w.Header().Set("Content-Encoding", "gzip")
 				w.Header().Add("Vary", "Accept-Encoding")
 
-				gw, _ := gzip.NewWriterLevel(w, level)
-				defer gw.Close()
-
+				index := gzipPoolIndex(level)
+				gzw := gzipWriterPools[index].Get().(*gzip.Writer)
+				gzw.Reset(w)
+				defer func(){
+					if err := gzw.Close(); err != nil {
+						log.Printf("closing gzip writer: %v", err)
+					}
+					gzipWriterPools[index].Put(gzw)
+				}()
 
 				w = httpsnoop.Wrap(w, httpsnoop.Hooks{
 					WriteHeader: func(headerFunc httpsnoop.WriteHeaderFunc) httpsnoop.WriteHeaderFunc {
@@ -60,9 +138,10 @@ func CompressHandlerLevel(h http.Handler, level int) http.Handler {
 							}
 							h.Del("Content-Length")
 
-							return gw.Write(b)
+							return gzw.Write(b)
 						}
 					},
+
 				})
 
 				break L
@@ -70,8 +149,15 @@ func CompressHandlerLevel(h http.Handler, level int) http.Handler {
 				w.Header().Set("Content-Encoding", "deflate")
 				w.Header().Add("Vary", "Accept-Encoding")
 
-				fw, _ := flate.NewWriter(w, level)
-				defer fw.Close()
+				index := flatePoolIndex(level)
+				fw := flateWriterPools[index].Get().(*flate.Writer)
+				fw.Reset(w)
+				defer func(){
+					if err := fw.Close(); err != nil {
+						log.Printf("closing gzip writer: %v", err)
+					}
+					flateWriterPools[index].Put(fw)
+				}()
 
 				w = httpsnoop.Wrap(w, httpsnoop.Hooks{
 					WriteHeader: func(headerFunc httpsnoop.WriteHeaderFunc) httpsnoop.WriteHeaderFunc {
