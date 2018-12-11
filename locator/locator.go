@@ -24,6 +24,12 @@ type Application interface {
 	// RegisterModule with the application context
 	RegisterModule(...Module) error
 
+	// GetService for the specified key, thread-safe
+	GetService(interface{}) interface{}
+
+	// GetServiceOK for the specified key, thread-safe
+	GetServiceOK(interface{}) (interface{}, bool)
+
 	// LocateService for the specified key, thread-safe
 	LocateService(interface{}, interface{}) error
 
@@ -193,6 +199,21 @@ func (d *defaultApplication) LocateService(key interface{}, mod interface{}) err
 	vv := reflect.Indirect(reflect.ValueOf(val))
 	reflect.Indirect(rv).Set(vv)
 	return nil
+}
+
+// GetService the module at the specified key, return nil when the component doesn't exist
+func (d *defaultApplication) GetService(key interface{}) interface{} {
+	mod, _ := d.GetServiceOK(key)
+	return mod
+}
+
+// GetServiceOK the module at the specified key, return false when the component doesn't exist
+func (d *defaultApplication) GetServiceOK(key interface{}) (interface{}, bool) {
+	mod, ok := d.registry.Load(key)
+	if !ok {
+		return nil, ok
+	}
+	return mod, ok
 }
 
 func (d *defaultApplication) SetService(key interface{}, module interface{}) error {
