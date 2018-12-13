@@ -1,13 +1,13 @@
 package appserver
 
-
 import (
 	"encoding/json"
-	"github.com/casualjim/go-appserver/mocks"
-	"github.com/go-logr/logr"
-	"github.com/stretchr/testify/require"
+	"io/ioutil"
+	"log"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestServeVersion(t *testing.T) {
@@ -17,25 +17,8 @@ func TestServeVersion(t *testing.T) {
 		GitState:  "clean",
 		Version:   "version-here",
 	}
-	lg := &mocks.LoggerMock{
-		EnabledFunc: func() bool { return true },
-		ErrorFunc: func(err error, msg string, keysAndValues ...interface{}) {
 
-		},
-		InfoFunc: func(msg string, keysAndValues ...interface{}) {
-
-		},
-		VFunc: func(level int) logr.InfoLogger {
-			return nil
-		},
-		WithNameFunc: func(name string) logr.Logger {
-			return nil
-		},
-		WithValuesFunc: func(keysAndValues ...interface{}) logr.Logger {
-			return nil
-		},
-	}
-	handler := VersionHandler(lg, info)
+	handler := VersionHandler(log.New(ioutil.Discard, "", 0), info)
 
 	b, _ := json.Marshal(info)
 	req := httptest.NewRequest("GET", "/version", nil)

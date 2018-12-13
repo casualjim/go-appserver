@@ -1,13 +1,18 @@
 package middleware
 
 import (
-	"github.com/felixge/httpsnoop"
-	"github.com/go-logr/logr"
 	"net/http"
 	"time"
+
+	"github.com/felixge/httpsnoop"
 )
 
-func LogRequests(lg logr.Logger) func(http.Handler) http.Handler {
+type Logger interface {
+	Printf(string, ...interface{})
+	Fatalf(string, ...interface{})
+}
+
+func LogRequests(lg Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			start := time.Now()
@@ -23,14 +28,14 @@ func LogRequests(lg logr.Logger) func(http.Handler) http.Handler {
 			})
 
 			defer func() {
-				lg.Info(
-					"http request",
-					"host", r.RemoteAddr,
-					"proto", r.Proto,
-					"method", r.Method,
-					"path", r.RequestURI,
-					"status", status,
-					"took", time.Since(start).String(),
+				lg.Printf(
+					"http request host=%s proto=%s method=%s path=%s status=%d took=%s",
+					r.RemoteAddr,
+					r.Proto,
+					r.Method,
+					r.RequestURI,
+					status,
+					time.Since(start).String(),
 				)
 			}()
 			next.ServeHTTP(rw, r)

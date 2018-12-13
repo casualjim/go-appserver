@@ -1,17 +1,17 @@
 package appserver
 
 import (
+	"net/http"
+
 	"github.com/casualjim/go-appserver/locator"
 	"github.com/casualjim/go-appserver/middleware"
-	"github.com/casualjim/go-httpd"
+	httpd "github.com/casualjim/go-httpd"
 	"github.com/go-chi/chi"
-	"github.com/go-logr/logr"
 	"github.com/heptiolabs/healthcheck"
 	"go.opencensus.io/plugin/ochttp"
 	"go.opencensus.io/plugin/ochttp/propagation/b3"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/trace"
-	"net/http"
 )
 
 type Option func(*defaultServer)
@@ -69,7 +69,7 @@ func WithMetricsExporter(exp view.Exporter) Option {
 }
 
 // New creates a new app server with default config
-func New(log logr.Logger, opts ...Option) Server {
+func New(log middleware.Logger, opts ...Option) Server {
 	adminApp := chi.NewRouter()
 	health := healthcheck.NewHandler()
 
@@ -83,7 +83,6 @@ func New(log logr.Logger, opts ...Option) Server {
 	app.Use(
 		middleware.ProxyHeaders,
 		middleware.Recover(log),
-		middleware.LogRequests(log),
 		middleware.CompressHandler,
 	)
 
@@ -166,7 +165,7 @@ type defaultServer struct {
 	adminApp  chi.Router
 	isPublic  bool
 
-	tracer trace.Exporter
+	tracer  trace.Exporter
 	metrics view.Exporter
 }
 

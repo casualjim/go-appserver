@@ -1,11 +1,10 @@
 module github.com/casualjim/go-appserver
 
 require (
-	github.com/casualjim/go-httpd v1.1.0
+	github.com/casualjim/go-httpd v1.2.0
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/felixge/httpsnoop v1.0.0
 	github.com/go-chi/chi v3.3.3+incompatible
-	github.com/go-logr/logr v0.1.0
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
 	github.com/pmezard/go-difflib v1.0.0 // indirect

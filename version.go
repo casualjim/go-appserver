@@ -3,8 +3,9 @@ package appserver
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/go-logr/logr"
 	"net/http"
+
+	"github.com/casualjim/go-appserver/middleware"
 )
 
 var (
@@ -55,12 +56,12 @@ func (v VersionInfo) String() string {
 	return buf.String()
 }
 
-func VersionHandler(log logr.Logger, info VersionInfo) http.HandlerFunc {
+func VersionHandler(log middleware.Logger, info VersionInfo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json;charset=utf-8")
 		enc := json.NewEncoder(w)
 		if err := enc.Encode(info); err != nil {
-			log.Error(err, "failed to write version response")
+			log.Printf("failed to write version response: %v", err)
 		}
 	}
 }
