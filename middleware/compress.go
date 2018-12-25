@@ -3,11 +3,12 @@ package middleware
 import (
 	"compress/flate"
 	"compress/gzip"
-	"github.com/felixge/httpsnoop"
 	"log"
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/felixge/httpsnoop"
 )
 
 // gzipWriterPools stores a sync.Pool for each compression level for reuse of
@@ -44,7 +45,6 @@ func addGzipLevelPool(level int) {
 	}
 }
 
-
 // flateWriterPools stores a sync.Pool for each compression level for reuse of
 // gzip.Writers. Use poolIndex to covert a compression level to an index into
 // flateWriterPools.
@@ -78,7 +78,6 @@ func addFlateLevelPool(level int) {
 		},
 	}
 }
-
 
 // Adapted from http://github.com/gorilla/handlers
 // Their middleware is greedy when it comes to implementing response writer methods
@@ -116,7 +115,7 @@ func CompressHandlerLevel(h http.Handler, level int) http.Handler {
 				index := gzipPoolIndex(level)
 				gzw := gzipWriterPools[index].Get().(*gzip.Writer)
 				gzw.Reset(w)
-				defer func(){
+				defer func() {
 					if err := gzw.Close(); err != nil {
 						log.Printf("closing gzip writer: %v", err)
 					}
@@ -141,7 +140,6 @@ func CompressHandlerLevel(h http.Handler, level int) http.Handler {
 							return gzw.Write(b)
 						}
 					},
-
 				})
 
 				break L
@@ -152,7 +150,7 @@ func CompressHandlerLevel(h http.Handler, level int) http.Handler {
 				index := flatePoolIndex(level)
 				fw := flateWriterPools[index].Get().(*flate.Writer)
 				fw.Reset(w)
-				defer func(){
+				defer func() {
 					if err := fw.Close(); err != nil {
 						log.Printf("closing gzip writer: %v", err)
 					}

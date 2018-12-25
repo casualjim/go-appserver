@@ -83,7 +83,6 @@ func New(log middleware.Logger, opts ...Option) Server {
 	app.Use(
 		middleware.ProxyHeaders,
 		middleware.Recover(log),
-		middleware.CompressHandler,
 	)
 
 	srv := &defaultServer{
