@@ -1,12 +1,13 @@
 package middleware
 
 import (
-	"compress/flate"
-	"compress/gzip"
 	"log"
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/klauspost/compress/flate"
+	"github.com/klauspost/compress/gzip"
 
 	"github.com/felixge/httpsnoop"
 )
