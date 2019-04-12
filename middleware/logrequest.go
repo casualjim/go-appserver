@@ -29,7 +29,8 @@ func LogRequests(lg Logger) func(http.Handler) http.Handler {
 
 			defer func() {
 				lg.Printf(
-					"http request host=%s proto=%s method=%s path=%s status=%d took=%s",
+					"%s request host=%s proto=%s method=%s path=%s status=%d took=%s",
+					r.URL.Scheme,
 					r.RemoteAddr,
 					r.Proto,
 					r.Method,
