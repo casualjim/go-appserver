@@ -12,6 +12,7 @@ import (
 	"go.opencensus.io/plugin/ochttp/propagation/b3"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/trace"
+	"go.opencensus.io/zpages"
 )
 
 type Option func(*defaultServer)
@@ -129,6 +130,12 @@ func New(log middleware.Logger, opts ...Option) Server {
 				})
 			},
 		)
+
+		mux := http.NewServeMux()
+		zpages.Handle(mux, "/")
+		adminApp.Mount("/rpcz", mux)
+		adminApp.Mount("/tracez", mux)
+		adminApp.Mount("/public/*", mux)
 	}
 	return srv
 }
