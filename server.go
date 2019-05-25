@@ -135,7 +135,7 @@ func New(log middleware.Logger, opts ...Option) Server {
 		zpages.Handle(mux, "/")
 		adminApp.Mount("/rpcz", mux)
 		adminApp.Mount("/tracez", mux)
-		adminApp.Mount("/public/*", mux)
+		adminApp.Mount("/public/", mux)
 	}
 	return srv
 }
