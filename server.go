@@ -110,6 +110,15 @@ func New(log middleware.Logger, opts ...Option) Server {
 		if pe, ok := srv.metrics.(http.Handler); ok {
 			srv.adminApp.Mount("/metrics", pe)
 		}
+		err := view.Register(ochttp.ServerRequestCountView,
+			ochttp.ServerRequestBytesView,
+			ochttp.ServerResponseBytesView,
+			ochttp.ServerLatencyView,
+			ochttp.ServerRequestCountByMethod,
+			ochttp.ServerResponseCountByStatusCode)
+		if err != nil {
+			panic(err)
+		}
 		view.RegisterExporter(srv.metrics)
 	}
 
