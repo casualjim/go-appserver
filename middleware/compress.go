@@ -176,6 +176,32 @@ func CompressHandlerLevel(h http.Handler, level int) http.Handler {
 							return fw.Write(b)
 						}
 					},
+					Push: func(httpsnoop.PushFunc) httpsnoop.PushFunc {
+						return func(target string, opts *http.PushOptions) error {
+							if opts == nil {
+								opts = &http.PushOptions{
+									Header: http.Header{
+										"Accept-Encoding": []string{"gzip"},
+									},
+								}
+								return nil
+							}
+
+							if opts.Header == nil {
+								opts.Header = http.Header{
+									"Accept-Encoding": []string{"gzip"},
+								}
+								return nil
+							}
+
+							if encoding := opts.Header.Get("Accept-Encoding"); encoding == "" {
+								opts.Header.Add("Accept-Encoding", "gzip")
+								return nil
+							}
+
+							return nil
+						}
+					},
 				})
 
 				break L
