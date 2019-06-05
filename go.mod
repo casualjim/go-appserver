@@ -1,15 +1,12 @@
 module github.com/casualjim/go-appserver
 
-replace gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.3 => github.com/DATA-DOG/go-sqlmock v1.3.3
+replace gopkg.in/DATA-DOG/go-sqlmock.v1 => github.com/DATA-DOG/go-sqlmock v1.3.3
 
 replace github.com/golang/lint => github.com/golang/lint v0.0.0-20190227174305-8f45f776aaf1
 
 require (
 	cloud.google.com/go v0.39.0 // indirect
-	github.com/DataDog/zstd v1.4.0 // indirect
 	github.com/OneOfOne/xxhash v1.2.5 // indirect
-	github.com/Shopify/sarama v1.22.1 // indirect
-	github.com/apache/thrift v0.12.0 // indirect
 	github.com/casualjim/go-httpd v1.2.1
 	github.com/dgryski/go-sip13 v0.0.0-20190329191031-25c5027a8c7b // indirect
 	github.com/docker/go-units v0.4.0 // indirect
@@ -19,7 +16,6 @@ require (
 	github.com/golang/mock v1.3.1 // indirect
 	github.com/google/btree v1.0.0 // indirect
 	github.com/google/pprof v0.0.0-20190515194954-54271f7e092f // indirect
-	github.com/gorilla/mux v1.7.2 // indirect
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
 	github.com/kisielk/errcheck v1.2.0 // indirect
@@ -27,9 +23,6 @@ require (
 	github.com/klauspost/cpuid v1.2.1 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pty v1.1.4 // indirect
-	github.com/onsi/ginkgo v1.8.0 // indirect
-	github.com/onsi/gomega v1.5.0 // indirect
-	github.com/openzipkin/zipkin-go v0.1.6 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/prometheus/client_golang v0.9.3 // indirect
 	github.com/prometheus/common v0.4.1 // indirect
